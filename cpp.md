@@ -228,7 +228,7 @@ auto func(int i) -> int(*)[10];
 
 ## 4.函数指针
 
-**1.**函数指针指向的是函数而非对象。
+**1.函数指针指向的是函数而非对象。**
 
 ```
 bool (*pf)(const string&, const string&);	//pf是一个指向函数的指针
@@ -240,7 +240,7 @@ pf = compareLength;
 bool b1 = pf("abc", "ac");	//通过pf调用函数compareLength
 ```
 
-**2.**指向不同函数类型的指针不存在转换规则，因此使用指向重载函数的指针必须明确精确匹配函数类型。
+**2.指向不同函数类型的指针不存在转换规则**，因此使用指向重载函数的指针必须明确精确匹配函数类型。
 
 ```
 void ff(int*);
@@ -251,7 +251,176 @@ void (*pf2)(int) = ff;			//错误：没有任何一个ff与形参列表匹配
 double (*pf3)(int*) = ff;			//错误：ff和pf3返回值不相同
 ```
 
+**3.函数指针形参**
+
+```
+void useBigger(const string& s1, const string& s2, bool (*pf)(const string&, const string&));
+
+useBigger("abc", "bc", comparelength);	//自动将函数compare转换成指向该函数的指针
+可以使用decltype简化生命
+typedef decltype(lengthCompare) Fun;	//Fun是函数类型
+useBigger("abc", "ab", Fun);
+```
 
 
 
+## 5.容器
+
+**5.1：容器操作可能使迭代器失效**
+
+​	当添加元素时，如果容器是vector或string，且存储空间被重新分配，则只向容器的迭代器、指针和引用都会失效。
+
+​	删除元素时，尾后迭代器总是会失效
+
+```
+auto begin = v.begin(), end = v.end();	//不要保存end返回的迭代器！
+//程序会死循环，添加元素时导致end中的迭代器失效
+while(begin != end){
+	++begin;
+	begin = v.insert(begin, 42);	
+	++begin;
+}
+```
+
+**5.2访问成员函数返回的是引用**
+
+```
+if (!c.empty()){
+	c.front() = 42;
+	auto &v = c.back();	
+	v = 1024;			//会改变c中的值
+	auto v2 = c.back();	//auto不会隐式的指明值是否为引用，需要加&
+	c = 0;				//不会改变c的值
+}
+```
+
+**5.3容器元素是拷贝：**将一个对象插入到容器中，实际上插入的是对象值的一个拷贝，而非对象本身。改变容器中的元素与实际对象之间没有任何关联，反之亦然。
+
+
+
+## 6.泛型算法
+
+**6.1** 泛型算法不会执行容器的操作，只会运行于迭代器之上。同样迭代器令算法不依赖于容器，但算法依赖于元素类型的操作。
+
+```
+int val = 42;	//要查找的值
+auto result = find(vec.cbegin(), vec.cend(), val); //找到返回指向它，不然为vec.cend()
+```
+
+**6.2只读算法：**只会读取输入范围内的元素，而从不改变元素，如find、accumulate等 在头文件numeric
+
+```
+int sum = accumulate(vec.begin(), vec.end(), 0); //和的初始值为0
+```
+
+操作两个序列的算法假定第二个序列至少与第一个一样长。
+
+```
+equal(roster1.cbegin(), roster1.cend(), rester1.cbegin());
+```
+
+**6.3写容器元素的算法：**要确保序列的原大小至少不小于要求算法写入的元素数目。
+
+```
+fill(vec.begin(), vec.end(), 0);	//每个元素重置为0
+
+vector<int> vec;
+fill_n(vec.begin(), vec.size(), 0);	//正确，fill_n接受操作个数
+fill_n(vec.begin(), 10, 0);			//错误，算法不会检查写操作的范围，向空容器中修改10个数
+
+int a1[] = {1, 2, 3};
+int a2[sizeof(a1)/sizeof(*a1)];
+auto ret = copy(begin(a1), end(a1), a2);	//把a1的内容拷贝给a2
+```
+
+重排容器元素的算法
+
+```
+void elimDups(vector<string> &words){
+	sort(words.begin(), word.end());
+	//unique并不会改变元素个数，返回一个指向不重复值范围末尾的迭代器
+	auto end_unique = unique(words.begin(), words.end());
+	//删除剩余元素
+	words.erase(end.unique, words.end());	
+}
+```
+
+**6.4 lambda**： 约等于一个未命名的内联函数
+
+```
+基本形式：[capture list](parameter list) -> return type { function body }
+```
+
+1. lambda不能有默认参数，调用的是参数永远与形参数目相等。
+2. 一个lambda只有在捕获列表中捕获一个他所在函数中的局部变量，才能在函数体中使用。
+
+
+```
+vector<string> words;
+words.push_back("aaa");
+words.push_back("bbb");
+size_t sz = 4;
+//获取一个迭代器，指向第一个满足size() >= sz的元素
+auto wc = find_if(words.begin(), words.end(), [sz](const string& a) {return a.size() >= sz; });
+//输出大于size >= sz的元素数目
+auto count = words.end() - wc;
+cout << count << endl;
+```
+
+**值捕获：**被捕获的变量的值实在lambda创建时拷贝，而不是调用时拷贝
+
+```
+void fun1(){
+	size_t v1 = 42;
+	auto f = [v1] { return v1; };
+	v1 = 0;
+	auto j = f();	//j的值为42，f保存了创建它时v1的拷贝
+}
+```
+
+**引用捕获：**必须保证lambda执行时变量是存在的
+
+```
+void fun2(){
+	size_t v1 = 42;
+	auto f2 = [&v1] { return v1; };
+	v1 = 0;
+	auto j = f2();	// j为0，f2保存v1的引用，而非拷贝
+}
+```
+
+**隐式捕获：**让编译器根据lambda中的代码推断要使用哪些变量。&表示引用捕获，=表示值捕获
+
+```
+auto wc = find_if(words.begin(), words.end(), [=](const string& a) {return a.size() >= sz; });	//隐式值捕获
+```
+
+**可变lambda：**若希望改变一个被捕获的变量的值，需加上关键字mutable
+
+```
+void fun3(){
+	size_t v1 = 42;
+	auto f = [v1] () mutable { return ++v1; };
+	v1 = 0;
+	auto j = f();	//v1 = 43;
+}
+```
+
+**指定lambda返回类型：**若lambda体包含return之外的任何语句，则编译器假定lambda返回void。
+
+```
+/* transform接受三个迭代器和一个可调用对象，前两个为输入序列，第三个为目的位置，当输入迭代器与目标迭代器相同时，transform将输入序列每个元素替换
+*/
+// 捕获为空，接受一个int参数， 返回一个int值
+// 定义返回类型时 必须使用尾置指针返回类型
+transform(vi.begin(), vi.end(), vi.begin(), [](int i) -> int
+{ if(i < 0) return -i; else return i; });
+```
+
+**6.5流迭代器：**绑定到输入输出流上，可用来遍历关联的IO流。
+
+1. istream_iterator
+
+```
+```
 
