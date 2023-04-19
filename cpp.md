@@ -422,5 +422,6 @@ transform(vi.begin(), vi.end(), vi.begin(), [](int i) -> int
 1. istream_iterator
 
 ```
+dadasdasd
 ```
 
