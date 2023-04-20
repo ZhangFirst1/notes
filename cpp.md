@@ -422,6 +422,25 @@ transform(vi.begin(), vi.end(), vi.begin(), [](int i) -> int
 1. istream_iterator
 
 ```
-dadasdasd
+//从输入流中读入int数据，遇到非int时结束
+istream_iterator<int> in_iter(cin);
+istream_iterator<int> eof;
+vector<int> vec1(in_iter, eof);
+for (auto iter : vec1) {
+	cout << iter << ' ';
+}
+```
+
+​	2. ostream_iterator
+
+```
+//将vec中每个元素写道cout，每个后边加一个空格
+vector<int> vec;
+vec.push_back(1);
+vec.push_back(2);
+ostream_iterator<int> out_iter(cout, " ");
+for (auto e : vec)
+	*out_iter++ = e;
+cout << endl;
 ```
 
