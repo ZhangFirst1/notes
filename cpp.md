@@ -444,3 +444,28 @@ for (auto e : vec)
 cout << endl;
 ```
 
+## 7. 智能指针
+
+​	智能指针能自动释放所指向的对象。
+
+### 7.1 shared_ptr:允许多个指针指向同一个对象
+
+**1. 基本用法：**智能指针类似vector也是模板，创建时需指出指向的类型，默认初始化的智能指针存一个空指针。
+
+```
+shared_ptr<string> p1;	//shared_ptr可以指向string
+shared_ptr<list<int>> p2;	//指向list<int>
+//如果p1不空 且 p1指向的string不空
+if(p1 && p1->empty())
+	*p1 = "hi";
+```
+
+​	最安全的分配和使用动态内存方法是使用make_shared函数
+
+```
+shared_ptr<int> p3 = make_shared<int>(42);	//指向一个值为42的int的shared_ptr
+shared_ptr<int> p4 = make_shared<int>();	//未指定初始值，进行值初始化（0）
+auto p5 = make_shared<vector<string>>();	//使用auto保存
+```
+
+​	
