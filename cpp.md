@@ -468,4 +468,107 @@ shared_ptr<int> p4 = make_shared<int>();	//未指定初始值，进行值初始�
 auto p5 = make_shared<vector<string>>();	//使用auto保存
 ```
 
-​	
+​	shared_ptr维护一个引用计数器，当其递减为0时释放内存。（拷贝、初始化、做参数、做返回值会递增）
+
+使用动态内存的三种原因：
+
+​	1.不知道需要多少对象 2.不知道所需对象的准确类型 3.需要在多个对象间共享数据
+
+**2.使用new动态分配和创建对象：**new无法为分配对象命名，返回一个指向该对象的指针。
+
+```
+int *pi = new int;
+string *ps = new string(10, '9');
+string *ps = new string;;	//默认初始化空string，值未定义
+string *ps = new string();	//值初始化空的string，有良好定义的值
+auto p1 = new auto(obj);	//p指向一个与obj类型相同的对象，仅当括号中有单一初始化器才可以用auto
+
+int *p1 = new (nothrow) int;	//如果分配失败，返回一个空指针，定位new
+```
+
+**3.空悬指针：**指针无效后依然保存着被释放的动态内存地址。
+
+```
+int *p(new int(42));
+auto q = p;
+delete p;		//q造成空悬指针
+p = nullptr;	//p置nullptr表示不指向任何变量
+```
+
+**4.shared_ptr与new结合：**用new返回的指针初始化智能指针，不能隐式转换，必须直接初始化
+
+```
+shared_ptr<int> p1(new int(1024));
+```
+
+不要混合使用智能指针与普通指针，不要用get初始化另一个智能指针或为其赋值
+
+```
+p = new int(1024);	//错误
+p.reset(new int(1024)); //正确
+```
+
+### 7.2 unique_ptr：同一时刻只能有一个指向一个对象
+
+**1.基本用法：**
+
+```
+unique_ptr<string> p1(new string("hhh"));
+unique_ptr<string> p2(p1);	//错误 不支持拷贝
+unique_ptr<string> p3 = p2;	//错误 不支持赋值
+```
+
+```
+unique_ptr<string> p2(p1.release());	//将所有权从p1转移给p2，release将p1置空
+unique_ptr<string> p3(new string("hhh"));
+p2.reset(p3.release());	//放弃p3的控制，将p2指向对象释放，将p3对象给p2，并将p3置空
+```
+
+可以拷贝或赋值一个将要被销毁的unique_ptr(返回一个unique_ptr)
+
+## 8. move
+
+[(42条消息) c++ 之 std::move 原理实现与用法总结_ppipp1109的博客-CSDN博客](https://blog.csdn.net/p942005405/article/details/84644069)
+
+```
+/**
+ *  @brief  Convert a value to an rvalue.
+ *  @param  __t  A thing of arbitrary type.
+ *  @return The parameter cast to an rvalue-reference to allow moving it.
+*/
+template <typename T>
+typename remove_reference<T>::type&& move(T&& t)
+{
+	return static_cast<typename remove_reference<T>::type&&>(t);
+}
+```
+
+```
+//经典用例
+string str = "Hello";
+vector<string> v;
+v.push_back(str);
+v.push_back(move(str));
+//str 为空 v[0] = v[1] = "hello"
+```
+
+
+
+## 9.引用折叠
+
+```
+A& & -> A&
+A& && -> A&
+A&& & -> A&
+A&& && -> A& &
+左值引用会传染，只有纯右值&& && = &&， 沾上一个左值引用就变成左值引用了
+```
+
+## 10.完美转发
+
+所谓的完美转发，是指**std::forward会将输入的参数原封不动地传递到下一个函数中，这个“原封不动”指的是，如果输入的参数是左值，那么传递给下一个函数的参数的也是左值；如果输入的参数是右值，那么传递给下一个函数的参数的也是右值。**
+
+```
+
+```
+
